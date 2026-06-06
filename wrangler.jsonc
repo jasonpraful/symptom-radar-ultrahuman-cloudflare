@@ -14,8 +14,16 @@
     "crons": ["0 12 * * *"]
   },
   // ─── D1 Database ────────────────────────────────────────────────────────────
-  // Replaces the local SQLite `ultrahuman.db`. Run `wrangler d1 create symptom_radar`
-  // and paste the returned database_id below (or via CI secret).
+  // Replaces the local SQLite `ultrahuman.db`.
+  //
+  // One-click "Deploy to Cloudflare" button: the binding + database_name below are
+  // the defaults the deploy flow needs. Cloudflare auto-provisions a fresh D1 and
+  // writes the real `database_id` back into this JSONC file before running the
+  // `deploy` script (id write-back works for JSON/JSONC, not TOML), which applies
+  // migrations against the `DB` binding.
+  //
+  // Manual setup instead: `wrangler d1 create symptom_radar` and paste the returned
+  // database_id below.
   "d1_databases": [
     {
       "binding": "DB",

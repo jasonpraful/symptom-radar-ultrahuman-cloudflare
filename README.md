@@ -14,6 +14,21 @@ It uses a **21-day rolling, exponentially-weighted z-score baseline** across thr
 core metrics (RHR, sleep HRV, skin-temperature deviation) to detect when your body
 is under strain, with a 3-day trend boost and a recovery-index modifier.
 
+## Deploy in one click
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/jasonpraful/symptom-radar-ultrahuman-cloudflare)
+
+Clicking the button clones this repo into your own GitHub account and walks you
+through setup on Cloudflare. It **auto-provisions the D1 database**, applies the
+schema migrations, and deploys the Worker (with its daily Cron Trigger). On the
+setup screen you'll be prompted for:
+
+- **`ULTRAHUMAN_TOKEN`** (required) — your Ultrahuman Partner API token.
+- **`WEBHOOK_URL`**, **`ADMIN_TOKEN`**, **`DASHBOARD_TOKEN`** (all optional).
+
+After it deploys, seed your baseline once (see [step 5](#5-seed-the-baseline-first-run)).
+Prefer to do it by hand or wire up CI? See [Manual setup](#manual-setup) below.
+
 > This is a faithful port of the original Python tool. During development the
 > strain algorithm and metric extraction were validated to be **byte-for-byte
 > equivalent** to the original via a Python ↔ TypeScript cross-check that ran both
@@ -76,7 +91,10 @@ you later need per-user realtime guarantees.)
 
 ---
 
-## Quick start
+## Manual setup
+
+> Not needed if you used the one-click button above — this is for local dev,
+> CLI deploys, or wiring up CI.
 
 ### 1. Prerequisites
 
@@ -99,8 +117,8 @@ Copy the printed `database_id` into `wrangler.jsonc` (replacing
 `REPLACE_WITH_YOUR_D1_DATABASE_ID`), then apply the schema:
 
 ```bash
-npm run db:migrate:local     # local dev DB
-npm run db:migrate:remote    # production DB
+npm run db:migrate:local      # local dev DB
+npm run db:migrations:apply    # production DB (references the DB binding)
 ```
 
 ### 3. Configure secrets
@@ -119,7 +137,7 @@ npx wrangler secret put DASHBOARD_TOKEN    # optional — guards the dashboard
 
 ```bash
 npm run dev        # http://localhost:8787  (dashboard + API)
-npm run deploy     # publish to Cloudflare
+npm run deploy     # applies remote migrations, then publishes to Cloudflare
 ```
 
 ### 5. Seed the baseline (first run)

@@ -6,13 +6,31 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run db:migrations:apply && wrangler deploy",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:migrate:local": "wrangler d1 migrations apply symptom_radar --local",
-    "db:migrate:remote": "wrangler d1 migrations apply symptom_radar --remote",
+    "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "cf-typegen": "wrangler types"
+  },
+  "cloudflare": {
+    "label": "Symptom Radar for Ultrahuman Ring",
+    "products": ["Workers", "D1"],
+    "bindings": {
+      "ULTRAHUMAN_TOKEN": {
+        "description": "**Required.** Your Ultrahuman Partner API token, sent verbatim as the `Authorization` header. Generate one at [vision.ultrahuman.com](https://vision.ultrahuman.com/developer-docs)."
+      },
+      "WEBHOOK_URL": {
+        "description": "*Optional.* Where the daily strain report is POSTed. A Slack/Discord incoming-webhook URL, or any endpoint that accepts JSON. Leave blank to disable notifications."
+      },
+      "ADMIN_TOKEN": {
+        "description": "*Optional.* A long random string that guards the admin endpoints (`POST /api/run`, `POST /api/backfill`). Generate one with `openssl rand -hex 32`. If unset, those endpoints are disabled."
+      },
+      "DASHBOARD_TOKEN": {
+        "description": "*Optional.* If set, viewing the dashboard and read APIs requires this token (`?token=` or `Authorization: Bearer`). Generate one with `openssl rand -hex 32`. Leave blank for a public dashboard."
+      }
+    }
   },
   "keywords": [
     "cloudflare",

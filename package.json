@@ -1,0 +1,53 @@
+{
+  "name": "symptom-radar-ultrahuman-cloudflare",
+  "version": "1.0.0",
+  "description": "TemPredict-inspired biometric strain detection for the Ultrahuman Ring, running entirely on Cloudflare (Workers + Cron + D1) in TypeScript, with webhook notifications and a dashboard.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "npm run db:migrations:apply && wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrations:apply": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "cf-typegen": "wrangler types"
+  },
+  "cloudflare": {
+    "label": "Symptom Radar for Ultrahuman Ring",
+    "products": ["Workers", "D1"],
+    "bindings": {
+      "ULTRAHUMAN_TOKEN": {
+        "description": "**Required.** Your Ultrahuman Partner API token, sent verbatim as the `Authorization` header. Generate one at [vision.ultrahuman.com](https://vision.ultrahuman.com/developer-docs)."
+      },
+      "WEBHOOK_URL": {
+        "description": "*Optional.* Where the daily strain report is POSTed. A Slack/Discord incoming-webhook URL, or any endpoint that accepts JSON. Leave blank to disable notifications."
+      },
+      "ADMIN_TOKEN": {
+        "description": "*Optional.* A long random string that guards the admin endpoints (`POST /api/run`, `POST /api/backfill`). Generate one with `openssl rand -hex 32`. If unset, those endpoints are disabled."
+      },
+      "DASHBOARD_TOKEN": {
+        "description": "*Optional.* If set, viewing the dashboard and read APIs requires this token (`?token=` or `Authorization: Bearer`). Generate one with `openssl rand -hex 32`. Leave blank for a public dashboard."
+      }
+    }
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "ultrahuman",
+    "biometrics",
+    "tempredict",
+    "anomaly-detection"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "@types/node": "^22.19.20",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.0.0"
+  }
+}

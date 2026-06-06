@@ -1,0 +1,18 @@
+# Local development secrets for `wrangler dev`.
+# Copy to `.dev.vars` (gitignored) and fill in. In production, set these with
+# `wrangler secret put <NAME>` instead — never commit real values.
+
+# Ultrahuman Partner API token (sent verbatim as the Authorization header).
+# Get one at https://vision.ultrahuman.com/developer-docs
+ULTRAHUMAN_TOKEN="your-ultrahuman-partner-token"
+
+# Where strain notifications are POSTed. Slack / Discord / generic all supported.
+# WEBHOOK_URL="https://hooks.slack.com/services/XXX/YYY/ZZZ"
+
+# Guards admin endpoints (POST /api/run, POST /api/backfill). If unset, those
+# endpoints are disabled.
+# ADMIN_TOKEN="choose-a-long-random-string"
+
+# Optional: require this token (Bearer or ?token=) to view the dashboard + read
+# APIs. If unset, the dashboard is publicly readable.
+# DASHBOARD_TOKEN="choose-another-long-random-string"

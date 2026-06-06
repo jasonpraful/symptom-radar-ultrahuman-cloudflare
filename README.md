@@ -228,19 +228,6 @@ npm run typecheck   # Worker (src) + tooling (tests/scripts)
 npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 ```
 
-## CI/CD
-
-- **`.github/workflows/ci.yml`** — typecheck + tests on every push/PR. No secrets
-  required.
-- **Deploys** are handled by Cloudflare, not GitHub Actions. The one-click button
-  connects your repo to [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/)
-  (Git integration), which **auto-builds and deploys on every push** to your
-  production branch — running the `deploy` script (remote D1 migrations →
-  `wrangler deploy`). No `CLOUDFLARE_*` secrets in GitHub needed.
-
-Prefer to deploy from your own machine instead? `npm run deploy` does the same
-thing locally.
-
 ## Project structure
 
 ```

@@ -53,7 +53,7 @@ Everything runs on Cloudflare — no servers, no always-on process.
 │                         /api/strain   (JSON)                           │
 │                         /api/run      (admin, POST)                    │
 │                         /api/backfill (admin, POST)  ──► Webhook ──►    │
-│                         /api/health                     Slack/Discord/  │
+│                                                         Slack/Discord/  │
 │                                                         generic         │
 └──────────────────────────────────────────────────────────────────────┘
         ▲                                                    │
@@ -160,7 +160,6 @@ The daily Cron Trigger then keeps it current automatically.
 | GET    | `/api/dashboard` | dashboard\* | Aggregated payload: latest strain, 30-day history, report, notifications. |
 | GET    | `/api/history`   | dashboard\* | `?days=N` snapshots (`days>=9999` = all).              |
 | GET    | `/api/strain`    | dashboard\* | Current strain assessment.                             |
-| GET    | `/api/health`    | none        | Liveness + config flags.                               |
 | POST   | `/api/run`       | **admin**   | Run the daily pipeline now (fetch → store → assess → notify). |
 | POST   | `/api/backfill`  | **admin**   | `?days=N` backfill history.                            |
 

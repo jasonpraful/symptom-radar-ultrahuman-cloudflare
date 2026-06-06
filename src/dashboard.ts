@@ -117,7 +117,8 @@ async function api(path) {
   return r.json();
 }
 
-function esc(s) { return String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function lvlOf(v) { v = Number(v); return v === 1 || v === 2 ? v : 0; }
 
 function spark(values, color) {
   const pts = values.filter(v => v !== null && v !== undefined);
@@ -154,7 +155,7 @@ function render(d) {
   }
   document.getElementById("updated").textContent = "Latest: " + (d.latest_date || "—");
 
-  const lvl = d.strain ? d.strain.level : 0;
+  const lvl = lvlOf(d.strain && d.strain.level);
   const last = hist[hist.length - 1] || {};
   const series = k => hist.map(r => r[k]);
 
@@ -190,7 +191,7 @@ function render(d) {
     for (const n of notes) {
       const st = n.delivered ? "✓ delivered" : (n.error ? '<span class="err">' + esc(n.error) + '</span>' : (n.channel ? "skipped" : "no webhook"));
       html += '<tr><td>' + esc(n.date) + '</td>' +
-        '<td><span class="pill pill' + n.strain_level + '">' + esc(LEVEL_TEXT[n.strain_level]) + '</span></td>' +
+        '<td><span class="pill pill' + lvlOf(n.strain_level) + '">' + esc(LEVEL_TEXT[lvlOf(n.strain_level)]) + '</span></td>' +
         '<td>' + esc(n.channel || "—") + '</td>' +
         '<td>' + st + '</td></tr>';
     }

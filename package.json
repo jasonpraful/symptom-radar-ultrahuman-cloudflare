@@ -10,8 +10,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "parity": "python3 scripts/parity_check.py",
-    "parity:strain": "python3 scripts/strain_parity.py",
+    "smoke": "node --experimental-sqlite --import tsx scripts/ts_harness.ts",
     "db:migrate:local": "wrangler d1 migrations apply symptom_radar --local",
     "db:migrate:remote": "wrangler d1 migrations apply symptom_radar --remote",
     "cf-typegen": "wrangler types"

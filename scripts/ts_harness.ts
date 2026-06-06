@@ -1,12 +1,13 @@
 /**
- * TypeScript parity harness.
+ * Live smoke test.
  *
  * Drives the REAL Worker code (backfill → daily pipeline → strain) against the
- * live Ultrahuman API, using a node:sqlite-backed D1. Emits a JSON document on
- * stdout that `parity_check.py` diffs against the Python reference output.
+ * live Ultrahuman API using a node:sqlite-backed D1, and prints the resulting
+ * snapshots, report, and strain assessment as JSON — handy for verifying a token
+ * and eyeballing real output without deploying.
  *
  * Usage:
- *   ULTRAHUMAN_TOKEN=... node --experimental-sqlite --import tsx scripts/ts_harness.ts [days]
+ *   ULTRAHUMAN_TOKEN=... npm run smoke -- [days]
  */
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

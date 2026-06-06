@@ -1,5 +1,11 @@
 # Symptom Radar for Ultrahuman Ring — Cloudflare Edition 🦠
 
+> **Credit:** Forked from and originally created by **Ansh Dhawan**
+> ([@anshdhawann](https://github.com/anshdhawann)) —
+> [anshdhawann/symptom-radar-ultrahuman](https://github.com/anshdhawann/symptom-radar-ultrahuman).
+> This is a TypeScript/Cloudflare port of that original Python tool. All credit for
+> the strain-detection design and the original implementation goes to Ansh Dhawan.
+
 A **TemPredict-study-inspired** anomaly-detection system that monitors your
 Ultrahuman Ring biometrics and flags early signs of physiological strain — now
 re-implemented to run **entirely on Cloudflare infrastructure in TypeScript**.
@@ -8,10 +14,10 @@ It uses a **21-day rolling, exponentially-weighted z-score baseline** across thr
 core metrics (RHR, sleep HRV, skin-temperature deviation) to detect when your body
 is under strain, with a 3-day trend boost and a recovery-index modifier.
 
-> This is a faithful port of the original Python tool. The strain algorithm and
-> metric extraction are **byte-for-byte equivalent** — verified by a Python ↔
-> TypeScript cross-check that runs both stacks against the live API and diffs every
-> value (see [Parity QA](#parity-qa-python--typescript)).
+> This is a faithful port of the original Python tool. During development the
+> strain algorithm and metric extraction were validated to be **byte-for-byte
+> equivalent** to the original via a Python ↔ TypeScript cross-check that ran both
+> stacks against the live API and diffed every value (see [Parity QA](#parity-qa)).
 
 ---
 
@@ -176,32 +182,32 @@ blended with a 3-day trend (whichever is worse), then summed:
 
 ---
 
-## Parity QA (Python ↔ TypeScript)
+## Parity QA
 
-The original Python lives in [`reference/`](reference/) and is the **cross-check
-baseline**. Two harnesses prove the port is faithful:
-
-```bash
-# Offline: fuzz the strain algorithm across 1000s of synthetic histories
-npm run parity:strain -- 1000
-
-# Live: run BOTH stacks against your real Ultrahuman API and diff every value
-ULTRAHUMAN_TOKEN=... npm run parity -- 35
-```
+The port was validated against the original Python implementation by running both
+stacks against the **live Ultrahuman API** and diffing every value, plus fuzzing
+the strain algorithm across 1000+ synthetic histories.
 
 **Verified results:**
 
 - **756 / 756** stored snapshot cells identical over a 35-day live backfill.
 - **Strain level identical in 100%** of cases (live + 1000+ synthetic, across
   levels 0/1/2).
-- The **only** differences are cosmetic: Python renders integer-valued floats with
-  a trailing `.0` (e.g. `51.0`, `190.0`) because of SQLite `REAL` columns / JSON
-  float literals, whereas JavaScript renders `51`, `190`. The underlying numeric
-  values are equal. The TS port deliberately uses the cleaner rendering.
+- The **only** differences were cosmetic: Python rendered integer-valued floats
+  with a trailing `.0` (e.g. `51.0`, `190.0`) because of SQLite `REAL` columns /
+  JSON float literals, whereas JavaScript renders `51`, `190`. The underlying
+  numeric values are equal; the TS port deliberately uses the cleaner rendering.
+  (Number formatting still uses Python's round-half-to-even — see `src/format.ts`.)
 
 > A known pre-existing quirk is preserved for fidelity: `vo2_max` is never stored
-> (the original's `extract_metric` has no branch for it), so both stacks emit
+> (the original's metric extraction has no branch for it), so the port also emits
 > `null`. See `src/extract.ts`.
+
+You can sanity-check live output yourself without deploying:
+
+```bash
+ULTRAHUMAN_TOKEN=... npm run smoke -- 35   # backfill + daily run against the live API
+```
 
 ### Development
 
@@ -212,9 +218,7 @@ npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 
 ## CI/CD
 
-- **`.github/workflows/ci.yml`** — typecheck, tests, and offline strain parity on
-  every push/PR. A manually-dispatchable `live-parity` job runs the full live
-  cross-check when an `ULTRAHUMAN_TOKEN` repo secret is present.
+- **`.github/workflows/ci.yml`** — typecheck + tests on every push/PR.
 - **`.github/workflows/deploy.yml`** — applies D1 migrations and deploys the Worker
   (needs `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` secrets).
 
@@ -227,8 +231,8 @@ npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 │   ├── router.ts       # HTTP routes / API + auth
 │   ├── pipeline.ts     # daily job: fetch→store→assess→notify→log
 │   ├── ultrahuman.ts   # Partner API client
-│   ├── extract.ts      # metric extraction (parity-critical)
-│   ├── strain.ts       # z-score strain detection (parity-critical)
+│   ├── extract.ts      # metric extraction
+│   ├── strain.ts       # z-score strain detection
 │   ├── report.ts       # markdown report builder + daily pipeline
 │   ├── backfill.ts     # history seeding
 │   ├── notify.ts       # webhook delivery (Slack/Discord/generic)
@@ -238,8 +242,7 @@ npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 │   ├── env.ts / types.ts
 ├── migrations/0001_initial_schema.sql
 ├── test/               # vitest unit + integration tests
-├── scripts/            # parity harnesses (Python ↔ TS) + node:sqlite D1 adapter
-├── reference/          # original Python implementation (parity baseline)
+├── scripts/            # node:sqlite D1 adapter + live smoke harness
 ├── wrangler.jsonc
 └── .github/workflows/  # CI + deploy
 ```
@@ -247,6 +250,12 @@ npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 ---
 
 ## Legal & attribution
+
+**Original work:** This project is a fork/port of
+[anshdhawann/symptom-radar-ultrahuman](https://github.com/anshdhawann/symptom-radar-ultrahuman)
+by **Ansh Dhawan** ([@anshdhawann](https://github.com/anshdhawann)), © 2026 Ansh
+Dhawan, MIT-licensed. The strain-detection design and original implementation are
+his work; this repository ports it to Cloudflare/TypeScript.
 
 Not affiliated with, endorsed by, or connected to Oura Health Oy or Ultrahuman.
 "Oura" and "Symptom Radar" are trademarks of Oura Health Oy; "Ultrahuman" is a

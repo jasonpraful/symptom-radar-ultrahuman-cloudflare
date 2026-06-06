@@ -57,6 +57,20 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
   .empty { color: var(--muted); padding: 30px; text-align: center; }
   a { color: var(--accent); }
   footer { color: var(--muted); font-size: 12px; padding: 30px 20px; text-align: center; }
+  details.admin { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 18px; }
+  details.admin > summary { cursor: pointer; padding: 14px 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; list-style: none; }
+  details.admin > summary::-webkit-details-marker { display: none; }
+  details.admin > summary::before { content: "⚙ "; }
+  .admin-body { padding: 4px 0 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .admin-body input { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; color: var(--txt); padding: 8px 10px; font: inherit; font-size: 13px; }
+  .admin-body input.token { flex: 1 1 240px; min-width: 200px; }
+  .admin-body input.days { width: 76px; }
+  .admin-body button { background: var(--accent); border: none; border-radius: 8px; color: #fff; padding: 8px 14px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .admin-body button.secondary { background: var(--panel2); border: 1px solid var(--line); color: var(--txt); }
+  .admin-body button:disabled { opacity: .5; cursor: default; }
+  .admin-status { flex: 1 1 100%; color: var(--muted); font-size: 12px; min-height: 16px; word-break: break-word; }
+  .admin-status.err { color: var(--bad); }
+  .admin-status.ok { color: var(--ok); }
 </style>
 </head>
 <body>
@@ -67,6 +81,18 @@ export const DASHBOARD_HTML = /* html */ `<!doctype html>
   </div>
   <div class="sub" id="updated"></div>
 </header>
+<div class="wrap" style="padding-bottom:0">
+  <details class="admin" id="admin">
+    <summary>Admin</summary>
+    <div class="admin-body">
+      <input class="token" id="admin-token" type="password" placeholder="ADMIN_TOKEN" autocomplete="off" spellcheck="false" />
+      <input class="days" id="admin-days" type="number" min="1" value="35" title="Backfill window in days" />
+      <button id="btn-backfill">Run backfill</button>
+      <button id="btn-run" class="secondary">Run now</button>
+      <div class="admin-status" id="admin-status">Enter your ADMIN_TOKEN, then run a backfill to populate data.</div>
+    </div>
+  </details>
+</div>
 <div class="wrap" id="app">
   <div class="empty">Loading…</div>
 </div>
@@ -174,10 +200,73 @@ function render(d) {
   app.innerHTML = html;
 }
 
-api("/api/dashboard").then(render).catch(e => {
-  document.getElementById("app").innerHTML = '<div class="card empty err">' + esc(e.message) +
-    '<br><br>If this is an auth error, append <code>?token=YOUR_DASHBOARD_TOKEN</code> to the URL.</div>';
-});
+function load() {
+  api("/api/dashboard").then(render).catch(e => {
+    document.getElementById("app").innerHTML = '<div class="card empty err">' + esc(e.message) +
+      '<br><br>If this is an auth error, append <code>?token=YOUR_DASHBOARD_TOKEN</code> to the URL.</div>';
+  });
+}
+
+// ── Admin panel: trigger backfill / daily run from the UI ──
+const ADMIN_KEY = "symptom-radar-admin-token";
+const adminTokenEl = document.getElementById("admin-token");
+const adminDaysEl = document.getElementById("admin-days");
+const adminStatusEl = document.getElementById("admin-status");
+const btnBackfill = document.getElementById("btn-backfill");
+const btnRun = document.getElementById("btn-run");
+
+try { adminTokenEl.value = localStorage.getItem(ADMIN_KEY) || ""; } catch (_) {}
+
+function setAdminStatus(msg, kind) {
+  adminStatusEl.textContent = msg;
+  adminStatusEl.className = "admin-status" + (kind ? " " + kind : "");
+}
+
+async function adminPost(path) {
+  const t = adminTokenEl.value.trim();
+  if (!t) { setAdminStatus("Enter your ADMIN_TOKEN first.", "err"); return null; }
+  try { localStorage.setItem(ADMIN_KEY, t); } catch (_) {}
+  // Authenticate via the Authorization header only — keeping the admin token
+  // out of the URL so it doesn't leak into Worker request logs / observability.
+  const r = await fetch(path, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + t },
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((body && body.error) || ("HTTP " + r.status));
+  return body;
+}
+
+async function runAdmin(action) {
+  btnBackfill.disabled = btnRun.disabled = true;
+  setAdminStatus("Running… large backfills can take a while.", "");
+  try {
+    let result;
+    if (action === "backfill") {
+      const days = parseInt(adminDaysEl.value, 10) || 35;
+      result = await adminPost("/api/backfill?days=" + days);
+      if (result) {
+        const errs = (result.errors && result.errors.length) ? " · " + result.errors.length + " error(s)" : "";
+        setAdminStatus("Backfill done — stored " + result.stored + " day(s) (" + result.start + " → " + result.end + ")" + errs + ".", "ok");
+      }
+    } else {
+      result = await adminPost("/api/run");
+      if (result) {
+        setAdminStatus("Daily run done — " + result.date + " · " + (LEVEL_TEXT[result.strain_level] || "?") + ".", "ok");
+      }
+    }
+    if (result) load();
+  } catch (e) {
+    setAdminStatus(e.message, "err");
+  } finally {
+    btnBackfill.disabled = btnRun.disabled = false;
+  }
+}
+
+btnBackfill.addEventListener("click", () => runAdmin("backfill"));
+btnRun.addEventListener("click", () => runAdmin("run"));
+
+load();
 </script>
 </body>
 </html>`;

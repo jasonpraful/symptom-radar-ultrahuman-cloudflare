@@ -21,7 +21,21 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 # ─── Configuration ────────────────────────────────────────────────────────────
-TOKEN = os.environ.get("ULTRAHUMAN_TOKEN")
+# Load .env file from the same directory if it exists
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(env_path):
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                v = v.strip("\"'")
+                if k == "ULTRAHUMAN_TOKEN":
+                    TOKEN = v
+                    break
+else:
+    TOKEN = os.environ.get("ULTRAHUMAN_TOKEN")
+
 if not TOKEN:
     print("❌ ULTRAHUMAN_TOKEN environment variable not set.", file=sys.stderr)
     print("   Get your token at https://vision.ultrahuman.com/developer-docs", file=sys.stderr)

@@ -226,8 +226,9 @@ async function adminPost(path) {
   const t = adminTokenEl.value.trim();
   if (!t) { setAdminStatus("Enter your ADMIN_TOKEN first.", "err"); return null; }
   try { localStorage.setItem(ADMIN_KEY, t); } catch (_) {}
-  const sep = path.includes("?") ? "&" : "?";
-  const r = await fetch(path + sep + "token=" + encodeURIComponent(t), {
+  // Authenticate via the Authorization header only — keeping the admin token
+  // out of the URL so it doesn't leak into Worker request logs / observability.
+  const r = await fetch(path, {
     method: "POST",
     headers: { "Authorization": "Bearer " + t },
   });

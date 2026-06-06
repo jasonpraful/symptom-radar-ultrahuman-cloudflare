@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { makeD1 } from "../scripts/d1_node.js";
+import { makeD1 } from "./d1_node.js";
 import { runDailyPipeline } from "../src/report.js";
 import { backfill } from "../src/backfill.js";
 import type { Env } from "../src/env.js";

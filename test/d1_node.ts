@@ -1,11 +1,8 @@
 /**
- * Minimal D1Database adapter backed by Node's built-in `node:sqlite`.
- *
- * Used only by the parity harness + tests so the *real* Worker code (db.ts,
- * report.ts, backfill.ts, pipeline.ts) can run outside the Workers runtime
- * against genuine SQLite semantics — identical to Cloudflare D1 (also SQLite).
- *
- * Run with: node --experimental-sqlite --import tsx <script>
+ * Minimal D1Database adapter backed by Node's built-in `node:sqlite`, used as a
+ * test double so the *real* Worker code (db.ts, report.ts, backfill.ts,
+ * pipeline.ts) can run under vitest against genuine SQLite semantics — identical
+ * to Cloudflare D1 (also SQLite).
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";

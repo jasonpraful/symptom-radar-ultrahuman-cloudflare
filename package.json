@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "node --experimental-sqlite --import tsx scripts/ts_harness.ts",
     "db:migrate:local": "wrangler d1 migrations apply symptom_radar --local",
     "db:migrate:remote": "wrangler d1 migrations apply symptom_radar --remote",
     "cf-typegen": "wrangler types"

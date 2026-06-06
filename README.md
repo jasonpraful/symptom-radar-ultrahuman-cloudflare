@@ -203,12 +203,6 @@ the strain algorithm across 1000+ synthetic histories.
 > (the original's metric extraction has no branch for it), so the port also emits
 > `null`. See `src/extract.ts`.
 
-You can sanity-check live output yourself without deploying:
-
-```bash
-ULTRAHUMAN_TOKEN=... npm run smoke -- 35   # backfill + daily run against the live API
-```
-
 ### Development
 
 ```bash
@@ -241,8 +235,7 @@ npm test            # vitest: unit + integration (stubbed API + node:sqlite D1)
 │   ├── format.ts       # Python-compatible number formatting
 │   ├── env.ts / types.ts
 ├── migrations/0001_initial_schema.sql
-├── test/               # vitest unit + integration tests
-├── scripts/            # node:sqlite D1 adapter + live smoke harness
+├── test/               # vitest unit + integration tests (+ node:sqlite D1 double)
 ├── wrangler.jsonc
 └── .github/workflows/  # CI + deploy
 ```

@@ -1,6 +1,6 @@
 {
-  // Typecheck for Node-side tooling: tests, the D1/node:sqlite adapter, and the
-  // parity harness. Uses Node types instead of (only) the Workers runtime types.
+  // Typecheck for Node-side tooling: the vitest tests and the D1/node:sqlite test
+  // double. Uses Node types instead of (only) the Workers runtime types.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "NodeNext",
@@ -10,5 +10,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["test/**/*.ts", "scripts/**/*.ts", "src/**/*.ts"]
+  "include": ["test/**/*.ts", "src/**/*.ts"]
 }

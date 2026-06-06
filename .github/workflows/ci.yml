@@ -1,18 +1,5 @@
 name: CI
 
-# Security posture for this PUBLIC repo:
-#  - No dependency caching. A shared Actions cache is a supply-chain surface on
-#    public repos (a run on one branch can write a cache that another branch later
-#    restores; setup-node's npm cache stores the actual package tarballs). We trade
-#    a few seconds of install time for zero cache-poisoning risk.
-#  - Third-party actions are pinned to a full commit SHA (not a movable tag), so a
-#    compromised/retagged action release cannot inject new code into our runs.
-#  - Least-privilege token: read-only, and not persisted into the git config.
-#  - `pull_request` (NOT `pull_request_target`): PRs from forks run with a
-#    read-only GITHUB_TOKEN and NO access to repo secrets, and cannot push.
-#  - `npm ci --ignore-scripts`: dependency lifecycle scripts (a common npm RCE
-#    vector) do not execute. Typecheck + tests don't need them.
-
 on:
   push:
     branches: ["**"]
@@ -39,13 +26,12 @@ jobs:
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 22
-          # Intentionally no `cache:` — see the security note at the top.
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Typecheck (Worker + tooling)
+      - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit + integration tests
+      - name: Test
         run: npm test

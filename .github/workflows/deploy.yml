@@ -1,0 +1,56 @@
+name: Deploy to Cloudflare
+
+# Deploys the Worker + applies D1 migrations.
+#
+# Prerequisites (one-time, see README):
+#   1. `wrangler d1 create symptom_radar` and put the database_id in wrangler.jsonc
+#   2. Repo secrets:
+#        CLOUDFLARE_API_TOKEN  – token with Workers Scripts + D1 edit permissions
+#        CLOUDFLARE_ACCOUNT_ID – your account id
+#   3. Worker secrets (set once via wrangler, not in CI):
+#        wrangler secret put ULTRAHUMAN_TOKEN
+#        wrangler secret put WEBHOOK_URL        (optional)
+#        wrangler secret put ADMIN_TOKEN        (optional, guards admin endpoints)
+#        wrangler secret put DASHBOARD_TOKEN    (optional, guards the dashboard)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Apply D1 migrations (remote)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply symptom_radar --remote
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

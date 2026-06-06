@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "symptom-radar",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  // ─── Cron Triggers ──────────────────────────────────────────────────────────
+  // Runs the daily fetch → store → assess → notify pipeline.
+  // Default: 12:00 UTC daily (matches the original Python cron example `0 12 * * *`).
+  "triggers": {
+    "crons": ["0 12 * * *"]
+  },
+  // ─── D1 Database ────────────────────────────────────────────────────────────
+  // Replaces the local SQLite `ultrahuman.db`. Run `wrangler d1 create symptom_radar`
+  // and paste the returned database_id below (or via CI secret).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "symptom_radar",
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // ─── Non-secret configuration ───────────────────────────────────────────────
+  // Secrets (ULTRAHUMAN_TOKEN, WEBHOOK_URL, ADMIN_TOKEN, DASHBOARD_TOKEN) are set
+  // via `wrangler secret put <NAME>` — never commit them here.
+  "vars": {
+    // "slack" | "discord" | "generic" | "auto" (auto-detect from WEBHOOK_URL host)
+    "WEBHOOK_FORMAT": "auto",
+    // Notify on these strain levels (comma-separated): 0=none,1=minor,2=major.
+    // Default "1,2" => only notify when something is worth watching.
+    "NOTIFY_ON_LEVELS": "1,2",
+    // Backfill window used by the /api/backfill admin endpoint and first run.
+    "BACKFILL_DAYS": "35"
+  }
+}

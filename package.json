@@ -1,0 +1,35 @@
+{
+  "name": "symptom-radar-ultrahuman-cloudflare",
+  "version": "1.0.0",
+  "description": "TemPredict-inspired biometric strain detection for the Ultrahuman Ring, running entirely on Cloudflare (Workers + Cron + D1) in TypeScript, with webhook notifications and a dashboard.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate:local": "wrangler d1 migrations apply symptom_radar --local",
+    "db:migrate:remote": "wrangler d1 migrations apply symptom_radar --remote",
+    "cf-typegen": "wrangler types"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "d1",
+    "ultrahuman",
+    "biometrics",
+    "tempredict",
+    "anomaly-detection"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "@types/node": "^22.19.20",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8",
+    "wrangler": "^4.0.0"
+  }
+}

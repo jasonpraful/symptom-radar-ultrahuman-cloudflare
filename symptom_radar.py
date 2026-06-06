@@ -198,24 +198,43 @@ def compute_zscore(val, mean, std):
         return None
     return (val - mean) / std
 
-def rolling_stats(series):
-    """Compute mean and std, ignoring None. Returns (None, None) if < 7 values."""
+def rolling_stats_weighted(series, decay=0.90):
+    """
+    Compute weighted mean and std with exponential decay.
+    More recent values get higher weight.
+    Decay=0.90: days 8–21 still contribute meaningfully, day 1 ≈ 12% of recent weight.
+    Returns (None, None) if < 7 valid values.
+    """
     valid = [s for s in series if s is not None]
     if len(valid) < 7:
         return None, None
+
     n = len(valid)
-    m = sum(valid) / n
-    v = sum((x - m) ** 2 for x in valid) / (n - 1) if n > 1 else 0
-    return m, math.sqrt(v)
+    weights = [decay ** (n - 1 - i) for i in range(n)]
+    total_w = sum(weights)
+
+    m = sum(w * v for w, v in zip(weights, valid)) / total_w
+    variance = sum(w * (v - m) ** 2 for w, v in zip(weights, valid)) / total_w
+    return m, math.sqrt(variance)
+
+def compute_rolling_avg(series, window=3):
+    """Compute rolling average of last N values, ignoring None."""
+    valid = [s for s in series if s is not None]
+    if len(valid) < window:
+        # Fall back to mean of whatever we have
+        if len(valid) < 2:
+            return valid[-1] if valid else None
+        return sum(valid) / len(valid)
+    return sum(valid[-window:]) / window
 
 def assess_strain(history):
     """
     TemPredict-inspired anomaly detection.
 
-    Uses 21-day rolling z-scores on 3 core metrics:
-    - Resting Heart Rate (30% weight, elevated = strain)
-    - Sleep HRV (30% weight, depressed = strain)
-    - Temperature deviation (40% weight, elevated = strain)
+    Uses 21-day rolling z-scores on 3 core metrics with:
+    - Exponential decay weighting (recent days weighted more)
+    - 3-day trend detection (catches gradual shifts)
+    - Recovery index as borderline modifier
 
     Returns:
         level (int): 0 = No signs, 1 = Minor signs, 2 = Major signs
@@ -230,42 +249,85 @@ def assess_strain(history):
 
     today = history[-1]
 
-    rhr_mean, rhr_std = rolling_stats([d.get("night_rhr") or d.get("sleep_rhr") for d in baseline])
-    hrv_mean, hrv_std = rolling_stats([d.get("avg_sleep_hrv") for d in baseline])
-    temp_mean, temp_std = rolling_stats([d.get("temp_deviation") for d in baseline])
+    # ── Extract series ──
+    rhr_series = [d.get("night_rhr") or d.get("sleep_rhr") for d in baseline]
+    hrv_series = [d.get("avg_sleep_hrv") for d in baseline]
+    temp_series = [d.get("temp_deviation") for d in baseline]
+    rec_series = [d.get("recovery_index") for d in baseline]
 
     today_rhr = today.get("night_rhr") or today.get("sleep_rhr")
     today_hrv = today.get("avg_sleep_hrv")
     today_temp = today.get("temp_deviation")
+    today_rec = today.get("recovery_index")
+
+    # ── Baseline stats (weighted) ──
+    rhr_mean, rhr_std = rolling_stats_weighted(rhr_series)
+    hrv_mean, hrv_std = rolling_stats_weighted(hrv_series)
+    temp_mean, temp_std = rolling_stats_weighted(temp_series)
+    rec_mean, rec_std = rolling_stats_weighted(rec_series)
 
     scores = {}
     contributions = []
 
-    # Resting HR (elevated = strain)
-    z_rhr = compute_zscore(today_rhr, rhr_mean, rhr_std)
-    if z_rhr is not None and z_rhr > 0:
-        scores["rhr"] = z_rhr * 0.30
-        contributions.append(f"RHR {today_rhr} bpm ({z_rhr:+.1f}σ)")
+    # ── Helper: compute blended score (single-day + trend) ──
+    def _metric_score(current_val, series_list, mean, std, weight, inverted=False):
+        """Compute blended z-score: 50% single-day, 50% 3-day trend."""
+        if mean is None or std is None or current_val is None:
+            return 0, None
 
-    # HRV (depressed = strain — inverted z-score)
-    if hrv_mean and hrv_std:
-        z_hrv = compute_zscore(today_hrv, hrv_mean, hrv_std)
-        if z_hrv is not None:
-            scores["hrv"] = (-z_hrv) * 0.30
-            contributions.append(f"HRV {today_hrv} ms ({z_hrv:+.1f}σ)")
+        # Single-day z
+        z_raw = compute_zscore(current_val, mean, std)
+        if z_raw is None:
+            return 0, None
 
-    # Temperature deviation (elevated = strain)
-    z_temp = compute_zscore(today_temp, temp_mean, temp_std)
-    if z_temp is not None and z_temp > 0:
-        scores["temp"] = z_temp * 0.40
-        contributions.append(f"Temp Δ {today_temp:+.1f}°C ({z_temp:+.1f}σ)")
+        # Trend z (3-day rolling avg vs baseline)
+        series_with_today = series_list + [current_val]
+        trend_val = compute_rolling_avg(series_with_today, window=3)
+        z_trend = compute_zscore(trend_val, mean, std)
+
+        # Blend: max of single-day and trend (trend as boost, not dilution)
+        z_blended = max(z_raw, z_trend or z_raw)
+
+        # Invert for HRV (depressed = strain)
+        if inverted:
+            z_blended = -z_blended
+
+        if z_blended <= 0:
+            return 0, z_raw
+
+        return z_blended * weight, z_raw
+
+    # 1. Resting HR (elevated = strain)
+    rhr_score, z_rhr = _metric_score(today_rhr, rhr_series, rhr_mean, rhr_std, 0.25, inverted=False)
+    if rhr_score > 0:
+        scores["rhr"] = rhr_score
+        contributions.append(f"RHR {today_rhr} bpm")
+
+    # 2. HRV (depressed = strain)
+    hrv_score, z_hrv = _metric_score(today_hrv, hrv_series, hrv_mean, hrv_std, 0.25, inverted=True)
+    if hrv_score > 0:
+        scores["hrv"] = hrv_score
+        contributions.append(f"HRV {today_hrv} ms")
+
+    # 3. Temperature deviation (elevated = strain)
+    temp_score, z_temp = _metric_score(today_temp, temp_series, temp_mean, temp_std, 0.35, inverted=False)
+    if temp_score > 0:
+        scores["temp"] = temp_score
+        contributions.append(f"Temp Δ {today_temp:+.1f}°C")
+
+    # 4. Recovery index modifier (depressed = strain, inverted)
+    if rec_mean is not None and rec_std is not None and today_rec is not None:
+        z_rec = compute_zscore(today_rec, rec_mean, rec_std)
+        if z_rec is not None and z_rec < -1.0:
+            scores["recovery_mod"] = min(abs(z_rec) * 0.10, 0.40)
+            contributions.append(f"Recovery {today_rec} (-{abs(z_rec):.1f}σ)")
 
     if not scores:
         return 0, "Insufficient data for strain assessment"
 
     strain = sum(scores.values())
     detail = " | ".join(contributions)
-    detail += f"\nAggregate strain score: {strain:.2f}σ"
+    detail += f"\nAggregate: {strain:.2f}σ"
 
     if strain >= 3.0:
         return 2, detail

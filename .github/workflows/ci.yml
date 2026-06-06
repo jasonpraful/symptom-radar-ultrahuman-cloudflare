@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Typecheck · Test · Parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install -r reference/requirements.txt
+
+      - name: Typecheck (Worker + tooling)
+        run: npm run typecheck
+
+      - name: Unit + integration tests
+        run: npm test
+
+      - name: Strain-algorithm parity (Python ↔ TypeScript, offline)
+        run: npm run parity:strain -- 500
+
+  live-parity:
+    name: Live API parity (Python ↔ TypeScript)
+    runs-on: ubuntu-latest
+    # Only runs when an Ultrahuman token is configured as a repo secret.
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          npm ci
+          pip install -r reference/requirements.txt
+      - name: Cross-check live API responses
+        env:
+          ULTRAHUMAN_TOKEN: ${{ secrets.ULTRAHUMAN_TOKEN }}
+        run: |
+          if [ -z "$ULTRAHUMAN_TOKEN" ]; then
+            echo "ULTRAHUMAN_TOKEN secret not set — skipping live parity."; exit 0
+          fi
+          npm run parity -- 35

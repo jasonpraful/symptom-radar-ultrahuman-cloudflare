@@ -1,12 +1,17 @@
 import type { Env } from "./env.js";
 import type { StrainResult } from "./types.js";
 
-export type WebhookFormat = "slack" | "discord" | "generic";
+export type WebhookFormat = "slack" | "discord" | "telegram" | "generic";
 
 /** Resolve the webhook payload format from config / URL host. */
 export function resolveFormat(env: Env): WebhookFormat {
   const explicit = (env.WEBHOOK_FORMAT ?? "auto").toLowerCase();
-  if (explicit === "slack" || explicit === "discord" || explicit === "generic") {
+  if (
+    explicit === "slack" ||
+    explicit === "discord" ||
+    explicit === "telegram" ||
+    explicit === "generic"
+  ) {
     return explicit;
   }
   // auto-detect from URL
@@ -15,6 +20,7 @@ export function resolveFormat(env: Env): WebhookFormat {
   if (url.includes("discord.com/api/webhooks") || url.includes("discordapp.com/api/webhooks")) {
     return "discord";
   }
+  if (url.includes("api.telegram.org")) return "telegram";
   return "generic";
 }
 
@@ -29,6 +35,7 @@ function buildBody(
   report: string,
   strain: StrainResult,
   date: string,
+  chatId?: string,
 ): string {
   switch (format) {
     case "slack":
@@ -56,6 +63,15 @@ function buildBody(
           },
         ],
       });
+    case "telegram":
+      // Telegram Bot API `sendMessage`. Report is rendered as HTML (safest parse
+      // mode — only &<> need escaping, vs MarkdownV2's ~18 reserved chars).
+      return JSON.stringify({
+        chat_id: chatId,
+        text: `${LEVEL_TITLE[strain.level]} — ${date}\n\n${telegramify(report)}`,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      });
     case "generic":
     default:
       return JSON.stringify({
@@ -72,6 +88,16 @@ function slackify(report: string): string {
   return report
     .replace(/^## (.*)$/gm, "*$1*")
     .replace(/\*\*(.+?)\*\*/g, "*$1*");
+}
+
+/** Convert the markdown report to Telegram-safe HTML (escape first, then bold). */
+function telegramify(report: string): string {
+  return report
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/^#{1,6}\s*(.*)$/gm, "<b>$1</b>")
+    .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
 
 export interface DeliveryResult {
@@ -112,7 +138,15 @@ export async function deliverNotification(
   }
 
   const format = resolveFormat(env);
-  const body = buildBody(format, report, strain, date);
+  if (format === "telegram" && !env.TELEGRAM_CHAT_ID) {
+    return {
+      attempted: false,
+      delivered: false,
+      channel: format,
+      error: "TELEGRAM_CHAT_ID is not set",
+    };
+  }
+  const body = buildBody(format, report, strain, date, env.TELEGRAM_CHAT_ID);
 
   try {
     const resp = await fetch(env.WEBHOOK_URL, {

@@ -31,6 +31,14 @@ function snap(overrides: Partial<SnapshotRow>): SnapshotRow {
     tosses_and_turns: null,
     full_sleep_cycles: null,
     restorative_sleep: null,
+    weekly_active_minutes: null,
+    movements: null,
+    morning_alertness: null,
+    avg_glucose: null,
+    glucose_variability: null,
+    metabolic_score: null,
+    hba1c: null,
+    time_in_target: null,
     ...overrides,
   };
 }

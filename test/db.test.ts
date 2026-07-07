@@ -13,12 +13,11 @@ import {
 } from "../src/db.js";
 import type { Snapshot } from "../src/types.js";
 
-const MIGRATION = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "migrations",
-  "0001_initial_schema.sql",
-);
+const MIG_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
+const MIGRATION = [
+  join(MIG_DIR, "0001_initial_schema.sql"),
+  join(MIG_DIR, "0002_extra_metrics.sql"),
+];
 
 function emptySnapshot(over: Partial<Snapshot> = {}): Snapshot {
   return {
@@ -28,6 +27,9 @@ function emptySnapshot(over: Partial<Snapshot> = {}): Snapshot {
     avg_sleep_hrv: null, recovery_index: null, movement_index: null,
     active_minutes: null, inactive_time: null, total_steps: null, vo2_max: null,
     spo2: null, tosses_and_turns: null, full_sleep_cycles: null, restorative_sleep: null,
+    weekly_active_minutes: null, movements: null, morning_alertness: null,
+    avg_glucose: null, glucose_variability: null, metabolic_score: null,
+    hba1c: null, time_in_target: null,
     ...over,
   };
 }

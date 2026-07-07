@@ -19,6 +19,14 @@ const SCALAR_VALUE_TYPES = new Set([
   "inactive_time",
   "weekly_active_minutes",
   "movements",
+  // Additional scalar metrics the live API exposes but the original port dropped.
+  "vo2_max",
+  "morning_alertness",
+  "average_glucose",
+  "glucose_variability",
+  "metabolic_score",
+  "hba1c",
+  "time_in_target",
 ]);
 
 /**
@@ -109,7 +117,7 @@ export function extractStepsTotal(metrics: UltrahumanMetric[]): number | null {
 export function buildSnapshotFromMetrics(metrics: UltrahumanMetric[]): Snapshot {
   let sleepRaw: Partial<Snapshot> = {};
   for (const m of metrics) {
-    if (m.type === "sleep") {
+    if (m.type?.toLowerCase() === "sleep") {
       sleepRaw = extractSleepSummary(m.object ?? {});
       break;
     }
@@ -123,6 +131,14 @@ export function buildSnapshotFromMetrics(metrics: UltrahumanMetric[]): Snapshot 
   const active = extractMetric(metrics, "active_minutes") as { value: number | null } | null;
   const inactive = extractMetric(metrics, "inactive_time") as { value: number | null } | null;
   const vo2 = extractMetric(metrics, "vo2_max") as { value: number | null } | null;
+  const weeklyActive = extractMetric(metrics, "weekly_active_minutes") as { value: number | null } | null;
+  const movements = extractMetric(metrics, "movements") as { value: number | null } | null;
+  const alertness = extractMetric(metrics, "morning_alertness") as { value: number | null } | null;
+  const avgGlucose = extractMetric(metrics, "average_glucose") as { value: number | null } | null;
+  const glucoseVar = extractMetric(metrics, "glucose_variability") as { value: number | null } | null;
+  const metabolic = extractMetric(metrics, "metabolic_score") as { value: number | null } | null;
+  const hba1c = extractMetric(metrics, "hba1c") as { value: number | null } | null;
+  const timeInTarget = extractMetric(metrics, "time_in_target") as { value: number | null } | null;
 
   return {
     sleep_score: sleepRaw.sleep_score ?? null,
@@ -146,5 +162,13 @@ export function buildSnapshotFromMetrics(metrics: UltrahumanMetric[]): Snapshot 
     tosses_and_turns: sleepRaw.tosses_and_turns ?? null,
     full_sleep_cycles: sleepRaw.full_sleep_cycles ?? null,
     restorative_sleep: sleepRaw.restorative_sleep ?? null,
+    weekly_active_minutes: weeklyActive?.value ?? null,
+    movements: movements?.value ?? null,
+    morning_alertness: alertness?.value ?? null,
+    avg_glucose: avgGlucose?.value ?? null,
+    glucose_variability: glucoseVar?.value ?? null,
+    metabolic_score: metabolic?.value ?? null,
+    hba1c: hba1c?.value ?? null,
+    time_in_target: timeInTarget?.value ?? null,
   };
 }

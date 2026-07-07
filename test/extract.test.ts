@@ -62,8 +62,8 @@ describe("extractMetric", () => {
     expect(extractMetric(m, "sleep_rhr")).toEqual({ value: 55 });
   });
 
-  it("returns null for vo2_max (faithful to the original's missing branch)", () => {
-    expect(extractMetric(m, "vo2_max")).toBeNull();
+  it("extracts vo2_max as a scalar value (live API exposes it)", () => {
+    expect(extractMetric(m, "vo2_max")).toEqual({ value: 48 });
   });
 
   it("returns null for an absent type", () => {
@@ -109,7 +109,7 @@ describe("extractSleepSummary", () => {
 });
 
 describe("buildSnapshotFromMetrics", () => {
-  it("assembles a full snapshot (vo2_max stays null by design)", () => {
+  it("assembles a full snapshot (including vo2_max from the live API)", () => {
     const snap = buildSnapshotFromMetrics(sampleDay());
     expect(snap.sleep_score).toBe(81);
     expect(snap.night_rhr).toBe(56);
@@ -117,7 +117,7 @@ describe("buildSnapshotFromMetrics", () => {
     expect(snap.avg_sleep_hrv).toBe(76);
     expect(snap.temp_deviation).toBe(0.35);
     expect(snap.total_steps).toBe(400);
-    expect(snap.vo2_max).toBeNull();
+    expect(snap.vo2_max).toBe(48);
     expect(snap.recovery_index).toBe(75);
   });
 });

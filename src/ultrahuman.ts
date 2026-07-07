@@ -1,7 +1,9 @@
-import type { UltrahumanResponse } from "./types.js";
+import type { UltrahumanMetric, UltrahumanResponse } from "./types.js";
 
-export const BASE_URL =
-  "https://partner.ultrahuman.com/api/v1/partner/daily_metrics";
+// Live Ultrahuman Partner API. Requires an `email` query param identifying the
+// ring owner and the token verbatim in the `Authorization` header. Returns one
+// day's metrics as `data.metric_data` (an array of { type, object }).
+export const BASE_URL = "https://partner.ultrahuman.com/api/v1/metrics";
 
 export class UltrahumanError extends Error {
   constructor(
@@ -55,18 +57,24 @@ async function getJson(
   }
 }
 
-/** Equivalent of Python `fetch_day(date_str)` — GET ?date=YYYY-MM-DD. */
-export function fetchDay(token: string, dateStr: string): Promise<UltrahumanResponse> {
-  const url = `${BASE_URL}?date=${encodeURIComponent(dateStr)}`;
+/** GET one day's metrics — `?email=<owner>&date=YYYY-MM-DD`. */
+export function fetchDay(
+  token: string,
+  email: string,
+  dateStr: string,
+): Promise<UltrahumanResponse> {
+  const url = `${BASE_URL}?email=${encodeURIComponent(email)}&date=${encodeURIComponent(dateStr)}`;
   return getJson(url, token);
 }
 
-/** Equivalent of Python `fetch_range(start_epoch, end_epoch)`. */
-export function fetchRange(
-  token: string,
-  startEpoch: number,
-  endEpoch: number,
-): Promise<UltrahumanResponse> {
-  const url = `${BASE_URL}?start_epoch=${Math.trunc(startEpoch)}&end_epoch=${Math.trunc(endEpoch)}`;
-  return getJson(url, token);
+/**
+ * Normalize a response into a day's metric array, tolerating both the live
+ * `data.metric_data` (flat array for the requested day) and the legacy
+ * `data.metrics[date]` (date-keyed map) shapes.
+ */
+export function metricsFor(
+  resp: UltrahumanResponse,
+  dateStr: string,
+): UltrahumanMetric[] {
+  return resp.data?.metric_data ?? resp.data?.metrics?.[dateStr] ?? [];
 }

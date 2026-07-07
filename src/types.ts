@@ -34,7 +34,13 @@ export interface UltrahumanMetric {
 
 export interface UltrahumanResponse {
   data?: {
+    // Live Partner API (`/api/v1/metrics?email=&date=`) returns a flat array of
+    // metrics for the single requested day.
+    metric_data?: UltrahumanMetric[];
+    // Legacy shape: a date-keyed map of metric arrays (kept for test fixtures /
+    // backward compatibility). `metricsFor()` in ultrahuman.ts reads either.
     metrics?: Record<string, UltrahumanMetric[]>;
+    latest_time_zone?: string;
   };
 }
 
@@ -63,6 +69,14 @@ export interface Snapshot {
   tosses_and_turns: number | null;
   full_sleep_cycles: number | null;
   restorative_sleep: number | null;
+  weekly_active_minutes: number | null;
+  movements: number | null;
+  morning_alertness: number | null;
+  avg_glucose: number | null;
+  glucose_variability: number | null;
+  metabolic_score: number | null;
+  hba1c: number | null;
+  time_in_target: number | null;
 }
 
 /** A snapshot row as read back from D1 (includes the date key + created_at). */

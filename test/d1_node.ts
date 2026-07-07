@@ -71,9 +71,15 @@ export class NodeD1Database {
   }
 }
 
-/** Construct a D1-typed database backed by node:sqlite, with the schema applied. */
-export function makeD1(migrationFile: string, path = ":memory:"): D1Database {
+/** Construct a D1-typed database backed by node:sqlite, with the schema applied.
+ * Accepts one migration file or an ordered list (applied in sequence). */
+export function makeD1(
+  migrations: string | string[],
+  path = ":memory:",
+): D1Database {
   const d1 = new NodeD1Database(path);
-  d1.applyMigration(migrationFile);
+  for (const f of Array.isArray(migrations) ? migrations : [migrations]) {
+    d1.applyMigration(f);
+  }
   return d1 as unknown as D1Database;
 }

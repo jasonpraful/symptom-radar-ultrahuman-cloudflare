@@ -122,8 +122,13 @@ export async function handleRequest(req: Request, env: Env, ctx: ExecutionContex
   if (path === "/api/run" && method === "POST") {
     const denied = await requireAdmin(req, env);
     if (denied) return denied;
+    // `?force=1` delivers the webhook regardless of NOTIFY_ON_LEVELS — useful to
+    // send a test notification even when the current strain level is muted.
+    const force = ["1", "true", "yes"].includes(
+      (url.searchParams.get("force") ?? "").toLowerCase(),
+    );
     try {
-      const result = await runDaily(env, ctx);
+      const result = await runDaily(env, ctx, { force });
       return json(result);
     } catch (err) {
       return json({ error: err instanceof Error ? err.message : String(err) }, 500);

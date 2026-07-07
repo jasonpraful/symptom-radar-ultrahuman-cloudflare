@@ -123,14 +123,19 @@ npm run db:migrations:apply    # production DB (references the DB binding)
 
 ### 3. Configure secrets
 
+First set your ring owner's email — the Partner API requires it as the `email`
+query param. It's not a secret, so put it in `wrangler.jsonc` under `vars` as
+`ULTRAHUMAN_EMAIL` (or export it for local dev).
+
 For local development, copy `.dev.vars.example` → `.dev.vars` and fill it in.
 For production:
 
 ```bash
 npx wrangler secret put ULTRAHUMAN_TOKEN   # required
-npx wrangler secret put WEBHOOK_URL        # optional — Slack/Discord/generic
+npx wrangler secret put WEBHOOK_URL        # optional — Slack/Discord/Telegram/generic
 npx wrangler secret put ADMIN_TOKEN        # optional — guards admin endpoints
 npx wrangler secret put DASHBOARD_TOKEN    # optional — guards the dashboard
+npx wrangler secret put TELEGRAM_CHAT_ID   # optional — only for Telegram notifications
 ```
 
 ### 4. Run locally / deploy
@@ -170,10 +175,13 @@ as `Authorization: Bearer <token>` or `?token=<token>`.* Admin endpoints require
 ## Notifications
 
 Set `WEBHOOK_URL` and the Worker POSTs the daily report there. The payload format
-is chosen by `WEBHOOK_FORMAT` (`auto` detects Slack/Discord from the URL):
+is chosen by `WEBHOOK_FORMAT` (`auto` detects Slack/Discord/Telegram from the URL):
 
 - **Slack** — `blocks` message with the report as mrkdwn.
 - **Discord** — embed coloured by strain level (green/yellow/red).
+- **Telegram** — `sendMessage` with the report as HTML. Set `WEBHOOK_URL` to the
+  bot's `https://api.telegram.org/bot<token>/sendMessage` endpoint and
+  `TELEGRAM_CHAT_ID` to the destination chat.
 - **generic** — `{ date, strain_level, strain_detail, report }` JSON.
 
 `NOTIFY_ON_LEVELS` (default `1,2`) controls which strain levels trigger a webhook,

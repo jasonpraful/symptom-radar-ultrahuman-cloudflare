@@ -36,6 +36,9 @@
   // Secrets (ULTRAHUMAN_TOKEN, WEBHOOK_URL, ADMIN_TOKEN, DASHBOARD_TOKEN) are set
   // via `wrangler secret put <NAME>` — never commit them here.
   "vars": {
+    // Ring owner's email — sent as the `email` query param to the Partner API
+    // (required alongside ULTRAHUMAN_TOKEN). Not secret; set it here per-account.
+    "ULTRAHUMAN_EMAIL": "you@example.com",
     // "slack" | "discord" | "generic" | "auto" (auto-detect from WEBHOOK_URL host)
     "WEBHOOK_FORMAT": "auto",
     // Notify on these strain levels (comma-separated): 0=none,1=minor,2=major.

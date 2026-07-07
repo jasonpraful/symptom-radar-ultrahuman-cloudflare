@@ -7,12 +7,11 @@ import { backfill } from "../src/backfill.js";
 import type { Env } from "../src/env.js";
 import type { UltrahumanMetric } from "../src/types.js";
 
-const MIGRATION = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "migrations",
-  "0001_initial_schema.sql",
-);
+const MIG_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "migrations");
+const MIGRATION = [
+  join(MIG_DIR, "0001_initial_schema.sql"),
+  join(MIG_DIR, "0002_extra_metrics.sql"),
+];
 
 /** Build a synthetic day's metrics for a given date string. */
 function dayMetrics(seed: number): UltrahumanMetric[] {
@@ -78,6 +77,7 @@ describe("end-to-end pipeline (stubbed API + node:sqlite D1)", () => {
     env = {
       DB: makeD1(MIGRATION),
       ULTRAHUMAN_TOKEN: "test-token",
+      ULTRAHUMAN_EMAIL: "test@example.com",
       WEBHOOK_FORMAT: "generic",
       NOTIFY_ON_LEVELS: "1,2",
       BACKFILL_DAYS: "20",

@@ -22,6 +22,14 @@ const SNAPSHOT_COLUMNS = [
   "tosses_and_turns",
   "full_sleep_cycles",
   "restorative_sleep",
+  "weekly_active_minutes",
+  "movements",
+  "morning_alertness",
+  "avg_glucose",
+  "glucose_variability",
+  "metabolic_score",
+  "hba1c",
+  "time_in_target",
 ] as const;
 
 /**

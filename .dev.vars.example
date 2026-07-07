@@ -6,8 +6,19 @@
 # Get one at https://vision.ultrahuman.com/developer-docs
 ULTRAHUMAN_TOKEN="your-ultrahuman-partner-token"
 
-# Where strain notifications are POSTed. Slack / Discord / generic all supported.
+# NOTE: the ring owner's email is required by the Partner API (`email=` query
+# param) and is configured as a non-secret var in wrangler.jsonc (ULTRAHUMAN_EMAIL),
+# not here.
+
+# Where strain notifications are POSTed. Slack / Discord / Telegram / generic all
+# supported (format auto-detected from the URL host).
 # WEBHOOK_URL="https://hooks.slack.com/services/XXX/YYY/ZZZ"
+#
+# Telegram: use the bot's sendMessage endpoint as WEBHOOK_URL and set the target
+# chat as TELEGRAM_CHAT_ID. Create a bot via @BotFather; get your chat id from
+# https://api.telegram.org/bot<token>/getUpdates after messaging the bot.
+# WEBHOOK_URL="https://api.telegram.org/bot<BOT_TOKEN>/sendMessage"
+# TELEGRAM_CHAT_ID="123456789"
 
 # Guards admin endpoints (POST /api/run, POST /api/backfill). If unset, those
 # endpoints are disabled.

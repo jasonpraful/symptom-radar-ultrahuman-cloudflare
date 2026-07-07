@@ -5,7 +5,7 @@ import {
   extractStepsTotal,
 } from "./extract.js";
 import { storeSnapshot, getRecent } from "./db.js";
-import { fetchDay } from "./ultrahuman.js";
+import { fetchDay, metricsFor } from "./ultrahuman.js";
 import { assessStrain } from "./strain.js";
 import type {
   MetricStats,
@@ -51,22 +51,23 @@ export async function runDailyPipeline(
   now: Date = new Date(),
 ): Promise<DailyResult> {
   const token = env.ULTRAHUMAN_TOKEN;
+  const email = env.ULTRAHUMAN_EMAIL;
   const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
   const yStr = utcDateStr(yesterday);
   const tStr = utcDateStr(now);
 
   const [yData, tData] = await Promise.all([
-    fetchDay(token, yStr),
-    fetchDay(token, tStr),
+    fetchDay(token, email, yStr),
+    fetchDay(token, email, tStr),
   ]);
 
-  const yMetrics: UltrahumanMetric[] = yData.data?.metrics?.[yStr] ?? [];
-  const tMetrics: UltrahumanMetric[] = tData.data?.metrics?.[tStr] ?? [];
+  const yMetrics: UltrahumanMetric[] = metricsFor(yData, yStr);
+  const tMetrics: UltrahumanMetric[] = metricsFor(tData, tStr);
 
   // Today's sleep summary
   let sleepRaw: Partial<Snapshot> | null = null;
   for (const m of tMetrics) {
-    if (m.type === "sleep") {
+    if (m.type?.toLowerCase() === "sleep") {
       sleepRaw = extractSleepSummary(m.object ?? {});
       break;
     }
@@ -80,6 +81,14 @@ export async function runDailyPipeline(
   const tActive = extractMetric(tMetrics, "active_minutes") as { value: number | null } | null;
   const tInactive = extractMetric(tMetrics, "inactive_time") as { value: number | null } | null;
   const tVo2 = extractMetric(tMetrics, "vo2_max") as { value: number | null } | null;
+  const tWeekly = extractMetric(tMetrics, "weekly_active_minutes") as { value: number | null } | null;
+  const tMovements = extractMetric(tMetrics, "movements") as { value: number | null } | null;
+  const tAlert = extractMetric(tMetrics, "morning_alertness") as { value: number | null } | null;
+  const tGlucose = extractMetric(tMetrics, "average_glucose") as { value: number | null } | null;
+  const tGlucoseVar = extractMetric(tMetrics, "glucose_variability") as { value: number | null } | null;
+  const tMetabolic = extractMetric(tMetrics, "metabolic_score") as { value: number | null } | null;
+  const tHba1c = extractMetric(tMetrics, "hba1c") as { value: number | null } | null;
+  const tTimeInTarget = extractMetric(tMetrics, "time_in_target") as { value: number | null } | null;
   const tHr = extractMetric(tMetrics, "hr") as MetricStats | null;
   const tHrv = extractMetric(tMetrics, "hrv") as MetricStats | null;
   const tTemp = extractMetric(tMetrics, "temp") as MetricStats | null;
@@ -111,6 +120,14 @@ export async function runDailyPipeline(
     tosses_and_turns: sleepRaw?.tosses_and_turns ?? null,
     full_sleep_cycles: sleepRaw?.full_sleep_cycles ?? null,
     restorative_sleep: sleepRaw?.restorative_sleep ?? null,
+    weekly_active_minutes: tWeekly?.value ?? null,
+    movements: tMovements?.value ?? null,
+    morning_alertness: tAlert?.value ?? null,
+    avg_glucose: tGlucose?.value ?? null,
+    glucose_variability: tGlucoseVar?.value ?? null,
+    metabolic_score: tMetabolic?.value ?? null,
+    hba1c: tHba1c?.value ?? null,
+    time_in_target: tTimeInTarget?.value ?? null,
   };
 
   await storeSnapshot(env.DB, tStr, snapshot);
@@ -128,6 +145,14 @@ export async function runDailyPipeline(
     tActive,
     tInactive,
     tVo2,
+    tWeekly,
+    tMovements,
+    tAlert,
+    tGlucose,
+    tGlucoseVar,
+    tMetabolic,
+    tHba1c,
+    tTimeInTarget,
     tHr,
     tHrv,
     tTemp,
@@ -148,6 +173,14 @@ interface FormatArgs {
   tActive: { value: number | null } | null;
   tInactive: { value: number | null } | null;
   tVo2: { value: number | null } | null;
+  tWeekly: { value: number | null } | null;
+  tMovements: { value: number | null } | null;
+  tAlert: { value: number | null } | null;
+  tGlucose: { value: number | null } | null;
+  tGlucoseVar: { value: number | null } | null;
+  tMetabolic: { value: number | null } | null;
+  tHba1c: { value: number | null } | null;
+  tTimeInTarget: { value: number | null } | null;
   tHr: MetricStats | null;
   tHrv: MetricStats | null;
   tTemp: MetricStats | null;
@@ -212,14 +245,37 @@ export function formatReport(a: FormatArgs): string {
   parts.push(`Recovery: **${rec}/100** | Movement: **${mov}/100**`);
   parts.push(`Active: **${act} min** | Inactive: **${ict} min**`);
   if (a.ySteps) parts.push(`Total Steps: **${Math.trunc(a.ySteps)}**`);
-  const vo2 = fmt(a.tVo2?.value ?? null);
-  if (a.tVo2?.value) parts.push(`VO2 Max: **${vo2}**`);
+  if (a.tWeekly?.value != null || a.tMovements?.value != null) {
+    parts.push(
+      `Weekly Active: **${fmt(a.tWeekly?.value ?? null, " min")}** | Movements: **${fmt(a.tMovements?.value ?? null)}**`,
+    );
+  }
+  if (a.tAlert?.value != null) parts.push(`Morning Alertness: **${a.tAlert.value} min**`);
+  if (a.tVo2?.value != null) parts.push(`VO2 Max: **${a.tVo2.value}**`);
 
   // Vitals
   parts.push("\n**❤️ Vitals**");
   if (a.tHr) parts.push(`HR: avg **${a.tHr.avg}** bpm (${a.tHr.min}–${a.tHr.max})`);
   if (a.tHrv) parts.push(`HRV: avg **${a.tHrv.avg}** ms (${a.tHrv.min}–${a.tHrv.max})`);
   if (a.tTemp) parts.push(`Skin Temp: avg **${a.tTemp.avg}**°C (${a.tTemp.min}–${a.tTemp.max})`);
+
+  // Metabolic (Ultrahuman M1 CGM) — only rendered when the user has glucose data.
+  const hasMetabolic =
+    a.tGlucose?.value != null ||
+    a.tMetabolic?.value != null ||
+    a.tHba1c?.value != null;
+  if (hasMetabolic) {
+    parts.push("\n**🩸 Metabolic**");
+    parts.push(
+      `Avg Glucose: **${fmt(a.tGlucose?.value ?? null, " mg/dL")}** | Variability: **${fmt(a.tGlucoseVar?.value ?? null)}**`,
+    );
+    parts.push(
+      `Metabolic Score: **${fmt(a.tMetabolic?.value ?? null)}/100** | HbA1c: **${fmt(a.tHba1c?.value ?? null, "%")}**`,
+    );
+    if (a.tTimeInTarget?.value != null) {
+      parts.push(`Time in Target: **${a.tTimeInTarget.value}%**`);
+    }
+  }
 
   const historyCount = a.history.filter((d) => d.sleep_score !== null && d.sleep_score !== undefined).length;
   parts.push(`\n📊 *Baseline: ${historyCount} days of data*`);
